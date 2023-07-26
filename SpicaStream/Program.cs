@@ -1,5 +1,4 @@
 ﻿using YoutubeExplode;
-using System;
 
 string outputPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads\\SpicaStream");
 
