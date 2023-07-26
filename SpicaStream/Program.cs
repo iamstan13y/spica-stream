@@ -1,4 +1,5 @@
 ﻿using YoutubeExplode;
+using System;
 
 string outputPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads\\SpicaStream");
 
@@ -8,14 +9,15 @@ string videoUrl = Console.ReadLine()!;
 
 try
 {
-    await DownloadVideoAsync(videoUrl, outputPath);
+    var progress = new Progress<double>(p => Console.WriteLine($"Download in Progress: {p:F2}%"));
+    await DownloadVideoAsync(videoUrl, outputPath, progress);
 }
 catch (Exception ex)
 {
     Console.WriteLine("An error occurred while downloading the videos: " + ex.Message);
 }
 
-static async Task DownloadVideoAsync(string videoUrl, string outputPath)
+static async Task DownloadVideoAsync(string videoUrl, string outputPath, IProgress<double>? progress = null)
 {
     if (!Directory.Exists(outputPath)) Directory.CreateDirectory(outputPath);
  
@@ -37,7 +39,21 @@ static async Task DownloadVideoAsync(string videoUrl, string outputPath)
 
         string outputFilePath = Path.Combine(outputPath, $"{sanitizedTitle}.{streamInfo.Container}");
         using var outputStream = File.Create(outputFilePath);
-        await stream.CopyToAsync(outputStream);
+
+        var buffer = new byte[81920];
+        int bytesRead;
+        long totalBytesRead = 0;
+
+        do
+        {
+            bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+            await outputStream.WriteAsync(buffer, 0, bytesRead);
+            totalBytesRead += bytesRead;
+            if (!string.IsNullOrEmpty(streamInfo.Size.ToString()))
+            {
+                progress?.Report((double)totalBytesRead / streamInfo.Size.Bytes * 100);
+            }
+        } while (bytesRead > 0);
 
         Console.WriteLine("Download Completed!");
         Console.WriteLine($"Video saved as: {outputFilePath}");
